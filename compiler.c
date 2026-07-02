@@ -1,4 +1,6 @@
 #include "compiler.h"
+#include "stdarg.h"
+#include "stdlib.h"
 
 struct lex_process_functions compiler_lex_functions =
 {
@@ -6,6 +8,18 @@ struct lex_process_functions compiler_lex_functions =
     .peek_char = compile_process_peek_char,
     .push_char = compile_process_push_char
 };
+
+void compiler_error(struct compile_process* process, const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    vfprintf(stderr, message, args);
+    va_end(args);
+
+    fprintf(stderr, "Error at %s:%d:%d\n", process->cfile.abs_path, process->pos.filename, process->pos.line, process->pos.col);
+
+    exit(-1);
+}
 
 int compile_file(const char *filename, const char* out_filename, int flags)
 {
@@ -17,6 +31,18 @@ int compile_file(const char *filename, const char* out_filename, int flags)
 
     // Perform lexical analysis
     struct lex_process* lex_process = lex_process_create(process, &compiler_lex_functions, NULL);
+
+
+    if(!lex_process)
+    {
+        return COMPILER_FAILED_WITH_ERRORS;
+    }
+
+    if(lex(lex_process) != LEXICAL_ANALYSIS_ALL_OK)
+    {
+        return COMPILER_FAILED_WITH_ERRORS;
+
+    }
 
     //Perform parsing
 

@@ -167,13 +167,13 @@ bool op_valid(const char *op)
            S_EQ(op, "%");
 }
 
-void read_op_flush_back_keep_first(struct buffer* buf)
+void read_op_flush_back_keep_first(struct buffer *buf)
 {
-    const char* data = buffer_ptr(buf);
+    const char *data = buffer_ptr(buf);
     int len = buf->len;
     for (int i = len - 1; i >= 1; i--)
     {
-        if(data[i] != 0x00)
+        if (data[i] != 0x00)
         {
             continue;
         }
@@ -182,11 +182,11 @@ void read_op_flush_back_keep_first(struct buffer* buf)
     }
 }
 
-const char* read_op()
+const char *read_op()
 {
     bool single_operator = true;
     char op = nextc();
-    struct buffer* buf = buffer_create();
+    struct buffer *buf = buffer_create();
     buffer_write(buf, op);
 
     if (!op_treated_as_one(op))
@@ -201,16 +201,17 @@ const char* read_op()
     }
     // NULL TERMINATOR
     buffer_write(buf, 0x00);
-    char* ptr = buffer_ptr(buf);
+    char *ptr = buffer_ptr(buf);
 
     if (!single_operator)
     {
-        if(!op_valid(ptr))
+        if (!op_valid(ptr))
         {
-           read_op_flush_back_keep_first(buf);
-           ptr[1] = 0x00;
+            read_op_flush_back_keep_first(buf);
+            ptr[1] = 0x00;
         }
-    }else if(!op_valid(ptr))
+    }
+    else if (!op_valid(ptr))
     {
         compiler_error(lex_process->compiler, "Invalid operator %s\n", ptr);
     }
@@ -218,14 +219,21 @@ const char* read_op()
     return ptr;
 }
 
-
-
 static void lex_new_expression()
 {
     lex_process->current_expression_count++;
-    if(lex_process->current_expression_count == 1)
+    if (lex_process->current_expression_count == 1)
     {
-        lex_process->parenthesis_buffer = buffer_create();  
+        lex_process->parenthesis_buffer = buffer_create();
+    }
+}
+
+static void lex_finish_expression()
+{
+    lex_process->current_expression_count--;
+    if (lex_process->current_expression_count < 0)
+    {
+        compiler_error(lex_process->compiler, "You closed an expression that was not opened\n");
     }
 }
 
@@ -237,10 +245,10 @@ bool lex_in_expression()
 static struct token *token_make_operator_or_string()
 {
     char op = peekc();
-    if(op == '<')
+    if (op == '<')
     {
         struct token *last_token = lexer_last_token();
-        if(token_is_keyword(last_token, "include"))
+        if (token_is_keyword(last_token, "include"))
         {
             return token_make_string('<', '>');
         }
@@ -250,11 +258,26 @@ static struct token *token_make_operator_or_string()
         .type = TOKEN_TYPE_OPERATOR,
         .sval = read_op()});
 
-    if(op == '(')
+    if (op == '(')
     {
         lex_new_expression();
     }
-        
+
+    return token;
+}
+
+static struct token *token_make_symbol()
+{
+    char c = nextc();
+    if (c == ')')
+    {
+        lex_finish_expression();
+    }
+
+    struct token *token = token_create(&(struct token){
+        .type = TOKEN_TYPE_SYMBOL,
+        .cval = c});
+
     return token;
 }
 
@@ -275,6 +298,10 @@ struct token *read_next_token()
         token = token_make_operator_or_string();
         break;
 
+    SYMBOL_CASE:
+        token = token_make_symbol();
+        break;
+
     case '"':
         token = token_make_string('"', '"');
         break;
@@ -283,16 +310,17 @@ struct token *read_next_token()
     // i
     case ' ':
     case '\t':
-        handle_whitespace();
+        token = handle_whitespace();
         break;
+        
     case EOF:
         // we have finished lexical analysis on the file
-        return NULL;
         break;
 
     default:
         compiler_error(lex_process->compiler, "Unexpected token \n");
     }
+
     return token;
 }
 

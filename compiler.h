@@ -45,6 +45,16 @@ struct pos
     case '.':                            \
     case '?'
 
+#define SYMBOL_CASE \
+    case '{':       \
+    case '}':       \
+    case ';':       \
+    case ':':       \
+    case '#':       \
+    case '\\':      \
+    case ')':       \
+    case ']'
+
 enum
 {
     TOKEN_TYPE_IDENTIFIER,
@@ -143,7 +153,7 @@ char compile_process_next_char(struct lex_process *lex_process);
 char compile_process_peek_char(struct lex_process *lex_process);
 void compile_process_push_char(struct lex_process *lex_process, char c);
 
-struct lex_process *lex_process_create(struct compile_process *compiler, struct lex_process_functions *functions, void *private);
+struct lex_process* lex_process_create(struct compile_process *compiler, struct lex_process_functions *functions, void *private);
 void lex_process_free(struct lex_process *process);
 void *lex_process_private(struct lex_process *process);
 struct vector *lex_process_token(struct lex_process *process);
@@ -153,6 +163,6 @@ void compiler_warning(struct compile_process *process, const char *message, ...)
 
 int lex(struct lex_process *process);
 
-bool token_is_keyword(struct token* token, const char* value);
+bool token_is_keyword(struct token *token, const char *value);
 
 #endif // ORANGE_COMPILER_H

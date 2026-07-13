@@ -43,6 +43,13 @@ static void pushc(char c)
     lex_process->function->push_char(lex_process, c);
 }
 
+static char assert_next_char(char c)
+{
+    char next_c = nextc();
+    assert(next_c == c);
+    return next_c;
+}
+
 struct token *token_create(struct token *_token)
 {
     memcpy(&temp_token, _token, sizeof(struct token));
@@ -430,6 +437,49 @@ struct token* token_make_newline(){
         .type = TOKEN_TYPE_NEWLINE});
 }
 
+char lex_get_escaped_char(char c)
+{
+    char co = 0;
+    switch (c)
+    {
+    case 'n':
+        co = '\n'; break;
+    case 't':
+        co = '\t'; break;
+    case '\\':
+        co = '\\'; break;
+    case '\'':
+        co = '\''; break;
+    default:
+        compiler_error(lex_process->compiler, "Invalid escape character: \\%c\n", c);
+        return 0;
+    }
+
+    return co;
+}
+
+struct token* token_make_quote()
+{
+    assert_next_char('\'');
+
+    char c = nextc();
+    if(c == '\\')
+    {
+        c = nextc();
+
+        c = lex_get_escaped_char(c);
+    }
+
+    if(nextc() != '\'')
+    {
+        compiler_error(lex_process->compiler, "Invalid character literal\n");
+    }
+
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_NUMBER,
+        .cval = c});
+}
+
 struct token *read_next_token()
 {
     struct token *token = NULL;
@@ -440,7 +490,7 @@ struct token *read_next_token()
     {
         return token;
     }
-    
+
     switch (c)
     {
     NUMERIC_CASE:
@@ -459,6 +509,10 @@ struct token *read_next_token()
 
     case '"':
         token = token_make_string('"', '"');
+        break;
+
+    case '\'':
+        token = token_make_quote();
         break;
 
     // Handle whitespace

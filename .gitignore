@@ -3,3 +3,9 @@ build/
 
 # object files
 *.o
+
+# vsocde settings
+.vscode
+
+# specific files
+main

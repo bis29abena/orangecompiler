@@ -278,6 +278,8 @@ bool is_keyword(const char *str)
            S_EQ(str, "restrict");
 }
 
+
+
 static struct token *token_make_operator_or_string()
 {
     char op = peekc();
@@ -300,6 +302,73 @@ static struct token *token_make_operator_or_string()
     }
 
     return token;
+}
+
+struct token* token_make_online_comment()
+{
+    struct buffer *buf = buffer_create();
+    char c = 0;
+    
+    LEX_GETC_IF(buf, c, c != '\n' && c != EOF);
+
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_COMMENT,
+        .sval = buffer_ptr(buf)});
+}
+
+struct token* token_make_multiline_comment()
+{
+    struct buffer *buf = buffer_create();
+    char c = 0;
+
+    while(1){
+        LEX_GETC_IF(buf, c, c != '*' && c != EOF);
+
+        if(c == EOF)
+        {
+            compiler_error(lex_process->compiler, "Unexpected end of file while reading multiline comment\n");
+        }
+
+        else if(c == '*')
+        {
+            nextc(); // consume '*'
+
+            char next = peekc();
+            if(next == '/')
+            {
+                nextc(); // consume '/'
+                break;
+            }
+        }
+    }
+
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_COMMENT,
+        .sval = buffer_ptr(buf)});
+}
+
+struct token* handle_comment()
+{
+    char c = peekc();
+    if(c == '/')
+    {
+        nextc(); // consume '/'
+        char next = peekc();
+        if(next == '/')
+        {
+            nextc(); // consume '/'
+            return token_make_online_comment();
+        }
+        else if(next == '*')
+        {
+            nextc(); // consume '*'
+            return token_make_multiline_comment();
+        }
+
+        pushc('/'); // push back the first '/' since it is not a comment
+        return token_make_operator_or_string();
+    }
+    return NULL;
 }
 
 static struct token *token_make_symbol()
@@ -366,6 +435,12 @@ struct token *read_next_token()
     struct token *token = NULL;
     char c = peekc();
 
+    token = handle_comment();
+    if(token)
+    {
+        return token;
+    }
+    
     switch (c)
     {
     NUMERIC_CASE:

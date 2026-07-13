@@ -97,11 +97,37 @@ const char *read_number_str()
     return buffer_ptr(buffer);
 }
 
+int lexer_number_type(char c)
+{
+    if (c == 'f' || c == 'F')
+    {
+        return NUMBER_TYPE_FLOAT;
+    }
+    else if (c == 'l' || c == 'L')
+    {
+        return NUMBER_TYPE_LONG;
+    }
+    else if (c == 'd' || c == 'D')
+    {
+        return NUMBER_TYPE_DOUBLE;
+    }
+
+    return NUMBER_TYPE_NORMAL;
+}
+
 struct token *token_make_number_for_value(unsigned long number)
 {
+    int number_type = lexer_number_type(peekc());
+
+    if (number_type != NUMBER_TYPE_NORMAL)
+    {
+        nextc();
+    }
+    
     return token_create(&(struct token){
         .type = TOKEN_TYPE_NUMBER,
-        .llnum = number});
+        .llnum = number,
+        .number.type = number_type});
 }
 
 unsigned long long read_number()

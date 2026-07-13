@@ -13,6 +13,7 @@
     }
 
 struct token *read_next_token();
+bool lex_in_expression();
 static struct lex_process *lex_process;
 static struct token temp_token;
 
@@ -24,6 +25,12 @@ static char peekc()
 static char nextc()
 {
     char c = lex_process->function->next_char(lex_process);
+
+    if(lex_in_expression())
+    {
+        buffer_write(lex_process->parenthesis_buffer, c);
+    }
+
     lex_process->pos.col += 1;
     if (c == '\n')
     {
@@ -54,6 +61,12 @@ struct token *token_create(struct token *_token)
 {
     memcpy(&temp_token, _token, sizeof(struct token));
     temp_token.pos = lex_file_position();
+
+    if(lex_in_expression())
+    {
+        temp_token.between_brackets = buffer_ptr(lex_process->parenthesis_buffer);
+    }
+
     return &temp_token;
 }
 
@@ -646,4 +659,49 @@ int lex(struct lex_process *process)
     }
 
     return LEXICAL_ANALYSIS_ALL_OK;
+}
+
+char lexer_string_buffer_next_char(struct lex_process* process)
+{
+    struct buffer* buffer = lex_process_private(process);
+    return buffer_read(buffer);
+}
+
+char lexer_string_buffer_peek_char(struct lex_process* process)
+{
+    struct buffer* buffer = lex_process_private(process);
+    return buffer_peek(buffer);
+}
+
+void lexer_string_buffer_push_char(struct lex_process* process, char c)
+{
+    struct buffer* buffer = lex_process_private(process);
+    buffer_write(buffer, c);
+}
+
+struct lex_process_functions lexer_string_buffer_functions =
+{
+    .next_char = lexer_string_buffer_next_char,
+    .peek_char = lexer_string_buffer_peek_char,
+    .push_char = lexer_string_buffer_push_char
+};
+
+struct lex_process* tokens_build_for_string(struct compile_process* compiler,const char* str)
+{
+    struct buffer* buffer = buffer_create();
+
+    buffer_printf(buffer, str);
+
+    struct lex_process* lex_process = lex_process_create(compiler, &lexer_string_buffer_functions, buffer);
+    if(!lex_process)
+    {
+        return NULL;
+    }
+    
+    if(lex(lex_process) != LEXICAL_ANALYSIS_ALL_OK)
+    {
+        return NULL;
+    }
+
+    return lex_process;
 }

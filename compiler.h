@@ -156,8 +156,18 @@ struct compile_process
     } cfile;
 
     // A vector of tokens that have been lexed from the input file. This is used for parsing and code generation
-    struct vector *token_vec;
+    struct vector* token_vec;
+
+    struct vector* node_vec;
+    struct vector* node_tree_vec;
+
     FILE *ofile;
+};
+
+enum
+{
+    PARSE_ALL_OK,
+    PARSE_GENERAL_ERROR
 };
 
 enum
@@ -237,6 +247,8 @@ struct vector *lex_process_token(struct lex_process *process);
 
 void compiler_error(struct compile_process *process, const char *message, ...);
 void compiler_warning(struct compile_process *process, const char *message, ...);
+
+int parse(struct compile_process* process);
 
 int lex(struct lex_process *process);
 

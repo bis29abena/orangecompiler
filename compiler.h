@@ -253,5 +253,15 @@ int parse(struct compile_process* process);
 int lex(struct lex_process *process);
 
 bool token_is_keyword(struct token *token, const char *value);
+bool token_is_nl_or_comment_or_newline_separator(struct token *token);
+bool token_is_symbol(struct token *token, char c);
+
+struct node* node_create(struct node* _node);
+void node_set_vector(struct vector* vec, struct vector* root);
+void node_push(struct node* node);
+struct node* node_peek_or_null();
+struct node* node_peek();
+struct node* node_pop();
+
 
 #endif // ORANGE_COMPILER_H

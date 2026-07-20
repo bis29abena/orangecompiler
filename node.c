@@ -29,7 +29,7 @@ struct node* node_peek()
 struct node* node_pop()
 {
     struct node* last_node = vector_back_ptr(node_vec);
-    struct node* last_node_root = vector_empty(node_vec) ? NULL : vector_back_ptr(node_vector_root);
+    struct node* last_node_root = vector_empty(node_vec) ? NULL : vector_back_ptr_or_null(node_vector_root);
     
 
     vector_pop(node_vec);
@@ -39,6 +39,25 @@ struct node* node_pop()
     }
 
     return last_node;
+}
+
+bool node_is_expressionable(struct node* node)
+{
+    return node->type == NODE_TYPE_EXPRESSION || node->type == NODE_TYPE_EXPRESSION_PARENTHESIS || node->type == NODE_TYPE_UNARY || node->type == NODE_TYPE_IDENTIFIER || node->type == NODE_TYPE_STRING || node->type == NODE_TYPE_NUMBER;
+}
+
+struct node* node_peek_expressionable_or_null()
+{
+    struct node* last_node = node_peek_or_null();
+    return node_is_expressionable(last_node) ? last_node : NULL;
+}
+
+void make_exp_node(struct node* left_node, struct node* right_node, const char* op)
+{
+    assert(left_node);
+    assert(right_node);
+
+    node_create(&(struct node){.type = NODE_TYPE_EXPRESSION, .exp = {.left = left_node, .right = right_node, .op = op}});
 }
 
 struct node* node_create(struct node* _node)

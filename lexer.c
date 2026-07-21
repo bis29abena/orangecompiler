@@ -26,7 +26,7 @@ static char nextc()
 {
     char c = lex_process->function->next_char(lex_process);
 
-    if(lex_in_expression())
+    if (lex_in_expression())
     {
         buffer_write(lex_process->parenthesis_buffer, c);
     }
@@ -62,7 +62,7 @@ struct token *token_create(struct token *_token)
     memcpy(&temp_token, _token, sizeof(struct token));
     temp_token.pos = lex_file_position();
 
-    if(lex_in_expression())
+    if (lex_in_expression())
     {
         temp_token.between_brackets = buffer_ptr(lex_process->parenthesis_buffer);
     }
@@ -123,7 +123,7 @@ struct token *token_make_number_for_value(unsigned long number)
     {
         nextc();
     }
-    
+
     return token_create(&(struct token){
         .type = TOKEN_TYPE_NUMBER,
         .llnum = number,
@@ -289,6 +289,19 @@ bool lex_in_expression()
     return lex_process->current_expression_count > 0;
 }
 
+bool keyword_is_datatype(const char *str)
+{
+    return S_EQ(str, "void") ||
+           S_EQ(str, "char") ||
+           S_EQ(str, "int") ||
+           S_EQ(str, "short") ||
+           S_EQ(str, "float") ||
+           S_EQ(str, "double") ||
+           S_EQ(str, "long") ||
+           S_EQ(str, "struct") ||
+           S_EQ(str, "union");
+}
+
 bool is_keyword(const char *str)
 {
     return S_EQ(str, "unsigned") ||
@@ -324,8 +337,6 @@ bool is_keyword(const char *str)
            S_EQ(str, "restrict");
 }
 
-
-
 static struct token *token_make_operator_or_string()
 {
     char op = peekc();
@@ -350,11 +361,11 @@ static struct token *token_make_operator_or_string()
     return token;
 }
 
-struct token* token_make_online_comment()
+struct token *token_make_online_comment()
 {
     struct buffer *buf = buffer_create();
     char c = 0;
-    
+
     LEX_GETC_IF(buf, c, c != '\n' && c != EOF);
 
     return token_create(&(struct token){
@@ -362,25 +373,26 @@ struct token* token_make_online_comment()
         .sval = buffer_ptr(buf)});
 }
 
-struct token* token_make_multiline_comment()
+struct token *token_make_multiline_comment()
 {
     struct buffer *buf = buffer_create();
     char c = 0;
 
-    while(1){
+    while (1)
+    {
         LEX_GETC_IF(buf, c, c != '*' && c != EOF);
 
-        if(c == EOF)
+        if (c == EOF)
         {
             compiler_error(lex_process->compiler, "Unexpected end of file while reading multiline comment\n");
         }
 
-        else if(c == '*')
+        else if (c == '*')
         {
             nextc(); // consume '*'
 
             char next = peekc();
-            if(next == '/')
+            if (next == '/')
             {
                 nextc(); // consume '/'
                 break;
@@ -393,19 +405,19 @@ struct token* token_make_multiline_comment()
         .sval = buffer_ptr(buf)});
 }
 
-struct token* handle_comment()
+struct token *handle_comment()
 {
     char c = peekc();
-    if(c == '/')
+    if (c == '/')
     {
         nextc(); // consume '/'
         char next = peekc();
-        if(next == '/')
+        if (next == '/')
         {
             nextc(); // consume '/'
             return token_make_online_comment();
         }
-        else if(next == '*')
+        else if (next == '*')
         {
             nextc(); // consume '*'
             return token_make_multiline_comment();
@@ -432,7 +444,7 @@ static struct token *token_make_symbol()
     return token;
 }
 
-static struct token* token_make_identifier_or_keyword()
+static struct token *token_make_identifier_or_keyword()
 {
     struct buffer *buf = buffer_create();
     char c = 0;
@@ -442,7 +454,7 @@ static struct token* token_make_identifier_or_keyword()
     buffer_write(buf, 0x00);
 
     // we have a valid identifier, now we need to check if it is a keyword
-    if(is_keyword(buffer_ptr(buf)))
+    if (is_keyword(buffer_ptr(buf)))
     {
         struct token *token = token_create(&(struct token){
             .type = TOKEN_TYPE_KEYWORD,
@@ -458,11 +470,11 @@ static struct token* token_make_identifier_or_keyword()
     return token;
 }
 
-struct token* read_special_token()
+struct token *read_special_token()
 {
     char c = peekc();
 
-    if(isalpha(c) || c == '_')
+    if (isalpha(c) || c == '_')
     {
         return token_make_identifier_or_keyword();
     }
@@ -470,7 +482,8 @@ struct token* read_special_token()
     return NULL;
 }
 
-struct token* token_make_newline(){
+struct token *token_make_newline()
+{
     nextc();
     return token_create(&(struct token){
         .type = TOKEN_TYPE_NEWLINE});
@@ -482,13 +495,17 @@ char lex_get_escaped_char(char c)
     switch (c)
     {
     case 'n':
-        co = '\n'; break;
+        co = '\n';
+        break;
     case 't':
-        co = '\t'; break;
+        co = '\t';
+        break;
     case '\\':
-        co = '\\'; break;
+        co = '\\';
+        break;
     case '\'':
-        co = '\''; break;
+        co = '\'';
+        break;
     default:
         compiler_error(lex_process->compiler, "Invalid escape character: \\%c\n", c);
         return 0;
@@ -509,30 +526,29 @@ bool is_hex_char(char c)
            (c >= 'A' && c <= 'F');
 }
 
-const char* read_hex_number_str()
+const char *read_hex_number_str()
 {
     struct buffer *buf = buffer_create();
     char c = peekc();
     LEX_GETC_IF(buf, c, is_hex_char(c));
-    //write our null terminator
+    // write our null terminator
     buffer_write(buf, 0x00);
     return buffer_ptr(buf);
 }
 
-void lexer_validate_binary_string(const char* str)
+void lexer_validate_binary_string(const char *str)
 {
     size_t len = strlen(str);
-    for(size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; i++)
     {
-        if(str[i] != '0' && str[i] != '1')
+        if (str[i] != '0' && str[i] != '1')
         {
             compiler_error(lex_process->compiler, "Invalid binary number: %s\n", str);
         }
     }
-
 }
 
-struct token* token_make_special_number_hexadecimal()
+struct token *token_make_special_number_hexadecimal()
 {
     // Skip the 'x' prefix
     nextc();
@@ -543,7 +559,7 @@ struct token* token_make_special_number_hexadecimal()
     return token_make_number_for_value(number);
 }
 
-struct token* token_make_special_number_binary()
+struct token *token_make_special_number_binary()
 {
     // Skip the 'b' prefix
     nextc();
@@ -555,13 +571,13 @@ struct token* token_make_special_number_binary()
     return token_make_number_for_value(number);
 }
 
-struct token* token_make_special_number()
+struct token *token_make_special_number()
 {
-    struct token* token = NULL;
+    struct token *token = NULL;
 
-    struct token* last_token = lexer_last_token();
+    struct token *last_token = lexer_last_token();
 
-    if(!last_token || !(last_token->type != TOKEN_TYPE_NUMBER && last_token->llnum == 0))
+    if (!last_token || !(last_token->type != TOKEN_TYPE_NUMBER && last_token->llnum == 0))
     {
         return token_make_identifier_or_keyword();
     }
@@ -569,11 +585,11 @@ struct token* token_make_special_number()
     lexer_pop_token();
     char c = peekc();
 
-    if(c == 'x')
+    if (c == 'x')
     {
         token = token_make_special_number_hexadecimal();
     }
-    else if(c == 'b')
+    else if (c == 'b')
     {
         token = token_make_special_number_binary();
     }
@@ -581,19 +597,19 @@ struct token* token_make_special_number()
     return token;
 }
 
-struct token* token_make_quote()
+struct token *token_make_quote()
 {
     assert_next_char('\'');
 
     char c = nextc();
-    if(c == '\\')
+    if (c == '\\')
     {
         c = nextc();
 
         c = lex_get_escaped_char(c);
     }
 
-    if(nextc() != '\'')
+    if (nextc() != '\'')
     {
         compiler_error(lex_process->compiler, "Invalid character literal\n");
     }
@@ -609,7 +625,7 @@ struct token *read_next_token()
     char c = peekc();
 
     token = handle_comment();
-    if(token)
+    if (token)
     {
         return token;
     }
@@ -653,14 +669,14 @@ struct token *read_next_token()
     case '\n':
         token = token_make_newline();
         break;
-        
+
     case EOF:
         // we have finished lexical analysis on the file
         break;
 
     default:
         token = read_special_token();
-        if(!token)
+        if (!token)
         {
             compiler_error(lex_process->compiler, "Unexpected token \n");
         }
@@ -687,44 +703,43 @@ int lex(struct lex_process *process)
     return LEXICAL_ANALYSIS_ALL_OK;
 }
 
-char lexer_string_buffer_next_char(struct lex_process* process)
+char lexer_string_buffer_next_char(struct lex_process *process)
 {
-    struct buffer* buffer = lex_process_private(process);
+    struct buffer *buffer = lex_process_private(process);
     return buffer_read(buffer);
 }
 
-char lexer_string_buffer_peek_char(struct lex_process* process)
+char lexer_string_buffer_peek_char(struct lex_process *process)
 {
-    struct buffer* buffer = lex_process_private(process);
+    struct buffer *buffer = lex_process_private(process);
     return buffer_peek(buffer);
 }
 
-void lexer_string_buffer_push_char(struct lex_process* process, char c)
+void lexer_string_buffer_push_char(struct lex_process *process, char c)
 {
-    struct buffer* buffer = lex_process_private(process);
+    struct buffer *buffer = lex_process_private(process);
     buffer_write(buffer, c);
 }
 
 struct lex_process_functions lexer_string_buffer_functions =
-{
-    .next_char = lexer_string_buffer_next_char,
-    .peek_char = lexer_string_buffer_peek_char,
-    .push_char = lexer_string_buffer_push_char
-};
+    {
+        .next_char = lexer_string_buffer_next_char,
+        .peek_char = lexer_string_buffer_peek_char,
+        .push_char = lexer_string_buffer_push_char};
 
-struct lex_process* tokens_build_for_string(struct compile_process* compiler,const char* str)
+struct lex_process *tokens_build_for_string(struct compile_process *compiler, const char *str)
 {
-    struct buffer* buffer = buffer_create();
+    struct buffer *buffer = buffer_create();
 
     buffer_printf(buffer, str);
 
-    struct lex_process* lex_process = lex_process_create(compiler, &lexer_string_buffer_functions, buffer);
-    if(!lex_process)
+    struct lex_process *lex_process = lex_process_create(compiler, &lexer_string_buffer_functions, buffer);
+    if (!lex_process)
     {
         return NULL;
     }
-    
-    if(lex(lex_process) != LEXICAL_ANALYSIS_ALL_OK)
+
+    if (lex(lex_process) != LEXICAL_ANALYSIS_ALL_OK)
     {
         return NULL;
     }

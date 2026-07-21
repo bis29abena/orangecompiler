@@ -210,6 +210,12 @@ int parse_exp(struct history* history)
     return 0;
 }
 
+void parse_identifier(struct history* history)
+{
+    assert(token_peek_next()->type == TOKEN_TYPE_IDENTIFIER);
+    parser_single_token_to_node();
+}
+
 int parse_expressionable_single(struct history* history)
 {
     struct token* token = token_peek_next();
@@ -227,6 +233,9 @@ int parse_expressionable_single(struct history* history)
             parser_single_token_to_node();
             res = 0;
             break;
+
+        case TOKEN_TYPE_IDENTIFIER:
+            parse_identifier(history);
 
         case TOKEN_TYPE_OPERATOR:
             parse_exp(history);
